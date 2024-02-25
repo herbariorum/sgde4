@@ -1,7 +1,5 @@
 package br.com.sgde.entity;
 
-import br.com.sgde.estudantes.entity.Student;
-import br.com.sgde.servidores.entity.Employees;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,7 +10,7 @@ import lombok.Setter;
 public class Endereco {
 
   
-    private Long id;
+    private Long idaddress;
     private String logradouro;
     private String numero;
     private String complemento;
@@ -20,16 +18,14 @@ public class Endereco {
     private String estado;
     private String cidade;
     private String cep;
+    private Integer employee_id;
+    private Integer student_id;
 
-    private Employees employee;
-
-    private Student student;
-    
     public Endereco() {
     }
 
-    public Endereco(Long id, String logradouro, String numero, String complemento, String bairro, String estado, String cidade, String cep) {
-        this.id = id;
+    public Endereco(Long idaddress, String logradouro, String numero, String complemento, String bairro, String estado, String cidade, String cep) {
+        this.idaddress = idaddress;
         this.logradouro = logradouro;
         this.numero = numero;
         this.complemento = complemento;
@@ -48,5 +44,7 @@ public class Endereco {
         this.cidade = cidade;
         this.cep = cep;
     }
+
+ 
 
 }

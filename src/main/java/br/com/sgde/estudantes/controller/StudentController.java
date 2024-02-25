@@ -35,11 +35,11 @@ public class StudentController {
         return lista;
     }
 
-    public void salvaNoBD(Student student) throws ExceptionDAO {
+    public int salvaNoBD(Student student) throws ExceptionDAO {
         if (student.getId() == null) {
-            this.studentDAO.save(student);
+            return this.studentDAO.save(student);
         }else{
-            this.studentDAO.update(student);
+           return this.studentDAO.update(student);
         }
     }
     

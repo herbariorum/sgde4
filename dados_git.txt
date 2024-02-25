@@ -1,0 +1,4 @@
+senha git: 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
+
+https://github.com/herbariorum/sgde4.git
+origin main

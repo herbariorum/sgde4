@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.commons.lang3.StringUtils;
 
 public class Util {
 
@@ -63,16 +64,14 @@ public class Util {
 
     }
 
-    private final String REGEX = "\\d+";
+    private final String REGEX = "[\\d]+";
 
     public String apenasNumero(String str) {
-        String numero = null;
-        Matcher matcher = Pattern.compile(REGEX).matcher(str);
-        if (matcher.find()) {
-            numero = matcher.group();
-        }
-
-        return numero;
-
+        return str.replaceAll("[^\\d]", "");
+    }
+    
+    public static String formataCpf(String cpf){
+        String cpfCompleto = StringUtils.leftPad(cpf, 11, '0');
+        return cpfCompleto.substring(0, 3)+"."+cpfCompleto.substring(3, 6)+"."+cpfCompleto.substring(6, 9)+"-"+cpfCompleto.substring(9, 11);
     }
 }

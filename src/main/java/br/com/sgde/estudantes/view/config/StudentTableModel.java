@@ -32,7 +32,7 @@ public class StudentTableModel extends ViewAbstractTableModel<Student> {
             case 1:
                 return std.getNome();
             case 2:
-                return std.getCpf();         
+                return Util.formataCpf(std.getCpf());         
             case 3:
                 return new Util().formatDate(std.getDta_nasc());
             case 4:

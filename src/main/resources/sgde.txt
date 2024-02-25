@@ -1,3 +1,4 @@
-fev 23, 2024 6:57:53 PM br.com.sgde.util.LogGenerator generateLog
-INFORMAÇÕES: Ocorreu o seguinte erro ao atualizar o estudante
-O índice da coluna está fora do intervalo: 8, número de colunas: 7.
+fev 25, 2024 7:47:10 PM br.com.sgde.util.LogGenerator generateLog
+INFORMAÇÕES: Ocorreu o seguinte erro ao tentar excluir o estudante
+ERROR: syntax error at or near "WHERE"
+  Posição: 107

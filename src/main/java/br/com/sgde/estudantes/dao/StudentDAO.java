@@ -10,9 +10,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Map;
 
 public class StudentDAO implements GenericDAO<Student> {
 
@@ -45,6 +45,7 @@ public class StudentDAO implements GenericDAO<Student> {
                 insertStudent = stmt.executeUpdate();
                 try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
+                        long idStudent = generatedKeys.getLong(1);
                         try (var stmtend = connection.prepareStatement(sqlInsertEndereco, Statement.RETURN_GENERATED_KEYS);) {
                             Endereco endereco = entity.getEndereco();
                             stmtend.setString(1, endereco.getLogradouro());
@@ -54,6 +55,7 @@ public class StudentDAO implements GenericDAO<Student> {
                             stmtend.setString(5, endereco.getEstado());
                             stmtend.setString(6, endereco.getCidade());
                             stmtend.setString(7, endereco.getCep());
+                            stmtend.setLong(8, idStudent);
                             insertEndereco = stmtend.executeUpdate();
                         }
                     }
@@ -72,15 +74,12 @@ public class StudentDAO implements GenericDAO<Student> {
         return -1;
     }
 
-
     @Override
     public int update(Student entity) throws ExceptionDAO {
         var updateStudent = 0;
         var updateEndereco = 0;
         Long idStudent = entity.getId();
-        System.out.println("Update "+entity);
-        try (var connection = DB.getConexao(); var stmt = connection.prepareStatement(sqlUpdate,
-                Statement.RETURN_GENERATED_KEYS);) {
+        try (var connection = DB.getConexao(); var stmt = connection.prepareStatement(sqlUpdate);) {
             stmt.setString(1, entity.getNome());
             stmt.setString(2, entity.getCpf());
             stmt.setDate(3, Date.valueOf(entity.getDta_nasc()));
@@ -96,8 +95,7 @@ public class StudentDAO implements GenericDAO<Student> {
             stmt.setLong(13, idStudent);
             updateStudent = stmt.executeUpdate();
 
-            try (var stmtend = connection.prepareStatement(sqlInsertEndereco,
-                    Statement.RETURN_GENERATED_KEYS);) {
+            try (var stmtend = connection.prepareStatement(sqlUpdateEndereco);) {
                 Endereco endereco = entity.getEndereco();
                 stmtend.setString(1, endereco.getLogradouro());
                 stmtend.setString(2, endereco.getNumero());
@@ -107,26 +105,24 @@ public class StudentDAO implements GenericDAO<Student> {
                 stmtend.setString(6, endereco.getCidade());
                 stmtend.setString(7, endereco.getCep());
                 stmtend.setLong(8, idStudent);
-                stmtend.setLong(9, endereco.getId());
+                stmtend.setLong(9, endereco.getIdaddress());
                 updateEndereco = stmtend.executeUpdate();
+
             }
-            
-            if ((updateStudent > 0) && (updateEndereco > 0)){
-                var rs = stmt.getGeneratedKeys();
-                if (rs.next()){
-                    return rs.getInt(1);
-                }
+            if ((updateStudent > 0) && (updateEndereco > 0)) {
+
+                return updateStudent;
             }
 
         } catch (SQLException ex) {
-            throw new ExceptionDAO("Ocorreu o seguinte erro ao atualizar o estudante\n" + ex.getMessage());
+            throw new ExceptionDAO("Ocorreu o seguinte erro ao atualizar o estudante\n" + ex.getSQLState() + ex.getMessage());
         }
 
         return -1;
     }
 
     @Override
-    public int delete(Student entity)throws ExceptionDAO  {
+    public int delete(Student entity) throws ExceptionDAO {
         try (var connection = DB.getConexao(); var stmt = connection.prepareStatement(sqlDelete);) {
             stmt.setLong(1, entity.getId());
             return stmt.executeUpdate();
@@ -137,10 +133,20 @@ public class StudentDAO implements GenericDAO<Student> {
 
     @Override
     public List<Student> list() throws ExceptionDAO {
-        List<Student> students = null;
+        List<Student> students = new ArrayList<>();
+        Map<Integer, Endereco> map = new HashMap<>();
         try (var connection = DB.getConexao(); var stmt = connection.createStatement();) {
             try (var rs = stmt.executeQuery(sqlFindAll)) {
-                students = convertToList(rs);
+                while (rs.next()) {
+                    Endereco end = map.get(rs.getInt("student_id"));
+                    if (end == null) {
+                        end = instancializaEndereco(rs);
+                        map.put(rs.getInt("student_id"), end);
+                    }
+                    Student student = instancializaStudent(rs, end);
+
+                    students.add(student);
+                }
             }
         } catch (SQLException e) {
             throw new ExceptionDAO("Ocorreu o seguinte erro ao listar estudantes\n" + e.getMessage());
@@ -154,31 +160,10 @@ public class StudentDAO implements GenericDAO<Student> {
         try (var connection = DB.getConexao(); var stmt = connection.prepareStatement(sqlFindByID);) {
             stmt.setLong(1, id);
             try (var rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    student = new Student();
-                    student.setId(rs.getLong("id"));
-                    student.setNome(rs.getString("nome"));
-                    student.setCpf(rs.getString("cpf"));
-                    student.setDta_nasc(rs.getDate("dta_nasc").toLocalDate());
-                    student.setSexo(rs.getString("sexo"));
-                    student.setStatus(rs.getBoolean("status"));
-                    student.setNomeMae(rs.getString("nomeMae"));
-                    student.setTelefoneMae(rs.getString("telefoneMae"));
-                    student.setNomePai(rs.getString("nomePai"));
-                    student.setTelefonePai(rs.getString("telefonePai"));
-                    student.setNacionalidade(rs.getString("nacionalidade"));
-                    student.setUfNascimento(rs.getString("ufNascimento"));
-                    student.setCidadeNascimento(rs.getString("cidadeNascimento"));
+                if (rs.next()) {
                     var endereco = new Endereco();
-                    endereco.setId(rs.getLong("id"));
-                    endereco.setLogradouro(rs.getString("logradouro"));
-                    endereco.setNumero(rs.getString("numero"));
-                    endereco.setComplemento(rs.getString("complemento"));
-                    endereco.setBairro(rs.getString("bairro"));
-                    endereco.setEstado(rs.getString("estado"));
-                    endereco.setCidade(rs.getString("cidade"));
-                    endereco.setCep(rs.getString("cep"));
-                    student.setEndereco(endereco);
+                    endereco = instancializaEndereco(rs);
+                    student = instancializaStudent(rs, endereco);
                 }
             }
         } catch (SQLException e) {
@@ -189,24 +174,45 @@ public class StudentDAO implements GenericDAO<Student> {
 
     @Override
     public List<Student> listByValue(final String value) throws ExceptionDAO {
-        List<Student> students = null;
         try (var connection = DB.getConexao(); var stmt = connection.prepareStatement(sqlFindByName);) {
             stmt.setString(1, "%" + value.toLowerCase() + "%");
             try (var rs = stmt.executeQuery()) {
-                students = convertToList(rs);
+                List<Student> students = new ArrayList<>();
+                Map<Integer, Endereco> map = new HashMap<>();
+                while (rs.next()) {
+                    Endereco end = map.get(rs.getInt("student_id"));
+                    if (end == null) {
+                        end = instancializaEndereco(rs);
+                        map.put(rs.getInt("student_id"), end);
+                    }
+                    Student student = instancializaStudent(rs, end);
+                    students.add(student);
+                }
+                return students;
             }
         } catch (SQLException e) {
             throw new ExceptionDAO("Ocorreu o seguinte erro ao buscar pelo nome.\n" + e.getMessage());
         }
-        return students;
+
     }
 
-    public List<Student> listByCpf(final String cpf) throws ExceptionDAO {
-        List<Student> students = null;
+    public List<Student> listByCpf(final String cpf) throws SQLException, ExceptionDAO {
+        List<Student> students = new ArrayList<>();
+        Map<Integer, Endereco> map = new HashMap<>();
         try (var connection = DB.getConexao(); var stmt = connection.prepareStatement(sqlFindToCpf);) {
             stmt.setString(1, cpf);
             try (var rs = stmt.executeQuery()) {
-                students = convertToList(rs);
+//                students = convertToList(rs); 
+                while (rs.next()) {
+                    Endereco end = map.get(rs.getInt("student_id"));
+                    if (end == null) {
+                        end = instancializaEndereco(rs);
+                        map.put(rs.getInt("student_id"), end);
+                    }
+                    Student student = instancializaStudent(rs, end);
+
+                    students.add(student);
+                }
             }
         } catch (SQLException e) {
             throw new ExceptionDAO("Ocorreu o seguinte erro ao buscar pelo nome.\n" + e.getMessage());
@@ -214,36 +220,44 @@ public class StudentDAO implements GenericDAO<Student> {
         return students;
     }
 
-    private List<Student> convertToList(ResultSet rs) {
-        List<Student> students = new ArrayList<>();
-        try {
-            while (rs.next()) {
-                var student = new Student();
-                student.setId(rs.getLong("id"));
-                student.setNome(rs.getString("nome"));
-                student.setCpf(rs.getString("cpf"));
-                student.setDta_nasc(rs.getDate("dta_nasc").toLocalDate());
-                student.setSexo(rs.getString("sexo"));
-                student.setStatus(rs.getBoolean("status"));
-                student.setNomeMae(rs.getString("nomeMae"));
-                student.setTelefoneMae(rs.getString("telefoneMae"));
-                student.setNomePai(rs.getString("nomePai"));
-                student.setTelefonePai(rs.getString("telefonePai"));
-                student.setNacionalidade(rs.getString("nacionalidade"));
-                student.setUfNascimento(rs.getString("ufNascimento"));
-                student.setCidadeNascimento(rs.getString("cidadeNascimento"));
-                students.add(student);
-            }
-        } catch (SQLException e) {
-        }
-        return students;
+    private Student instancializaStudent(ResultSet rs, Endereco endereco) throws SQLException {
+        Student student = new Student();
+        student.setId(rs.getLong("id"));
+        student.setNome(rs.getString("nome"));
+        student.setCpf(rs.getString("cpf"));
+        student.setDta_nasc(rs.getDate("dta_nasc").toLocalDate());
+        student.setSexo(rs.getString("sexo"));
+        student.setStatus(rs.getBoolean("status"));
+        student.setNomeMae(rs.getString("nomeMae"));
+        student.setTelefoneMae(rs.getString("telefoneMae"));
+        student.setNomePai(rs.getString("nomePai"));
+        student.setTelefonePai(rs.getString("telefonePai"));
+        student.setNacionalidade(rs.getString("nacionalidade"));
+        student.setUfNascimento(rs.getString("ufNascimento"));
+        student.setCidadeNascimento(rs.getString("cidadeNascimento"));
+        student.setEndereco(endereco);
+        return student;
+    }
+
+    private Endereco instancializaEndereco(ResultSet rs) throws SQLException {
+        Endereco endereco = new Endereco();
+        endereco.setIdaddress(rs.getLong("idaddress"));
+        endereco.setLogradouro(rs.getString("logradouro"));
+        endereco.setNumero(rs.getString("numero"));
+        endereco.setComplemento(rs.getString("complemento"));
+        endereco.setBairro(rs.getString("bairro"));
+        endereco.setEstado(rs.getString("estado"));
+        endereco.setCidade(rs.getString("cidade"));
+        endereco.setCep(rs.getString("cep"));
+        endereco.setStudent_id(rs.getInt("student_id"));
+        return endereco;
     }
 
     private final String sqlFindAll = "SELECT * FROM student";
-    private final String sqlFindToCpf = "SELECT * FROM student WHERE cpf = ?";
+    private final String sqlFindToCpf = "select est.*, address.* FROM student est INNER JOIN endereco address ON est.id = address.student_id WHERE est.cpf = ?";
     private final String sqlFindByID = "select est.*, address.* FROM student est INNER JOIN endereco address ON est.id = address.student_id WHERE est.id = ?;";
     private final String sqlDelete = "DELETE FROM student WHERE id = ?";
-    private final String sqlFindByName = "SELECT * FROM student WHERE LOWER(nome) Like ? ORDER BY nome";
+    private final String sqlFindByName = "select est.*, address.* FROM student est INNER JOIN endereco address ON est.id = address.student_id WHERE LOWER(est.nome) Like ? ORDER BY est.nome";
     private final String sqlInsert = "INSERT INTO student(nome, cpf, dta_nasc, "
             + "sexo, status, nomeMae, nomePai, telefoneMae, telefonePai, nacionalidade,"
             + "ufNascimento, cidadeNascimento) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
@@ -252,9 +266,9 @@ public class StudentDAO implements GenericDAO<Student> {
             + "nacionalidade = ?, ufNascimento = ?, cidadeNascimento = ? WHERE id = ?";
 
     private final String sqlInsertEndereco = "INSERT INTO endereco(logradouro, numero, complemento,"
-            + "bairro, estado, cidade, cep) VALUES (?,?,?,?,?,?,?)";
+            + "bairro, estado, cidade, cep, student_id) VALUES (?,?,?,?,?,?,?,?)";
 
     private final String sqlUpdateEndereco = "UPDATE endereco SET logradouro = ?, "
             + "numero = ?, complemento = ?,"
-            + "bairro = ?, estado = ?, cidade = ?, cep = ?, student_id = ? WHERE id = ?";
+            + "bairro = ?, estado = ?, cidade = ?, cep = ?, student_id = ? WHERE idaddress = ?";
 }

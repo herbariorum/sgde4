@@ -25,7 +25,6 @@ import javax.swing.table.TableRowSorter;
 import javax.swing.text.MaskFormatter;
 import raven.toast.Notifications;
 import java.text.ParseException;
-import java.time.LocalDate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
@@ -674,33 +673,42 @@ public class EstudantesForm extends javax.swing.JInternalFrame {
             txtCep.putClientProperty("JComponent.outline", null);
             cbxSexo.putClientProperty("JComponent.outline", null);
         }
-        
-        endereco = new Endereco();
 
-        endereco.setId(this.idEndereco);
-        endereco.setLogradouro(txtLogradouro.getText());
-        endereco.setNumero(txtNumero.getText());
-        endereco.setBairro(txtBairro.getText());
-        endereco.setComplemento(txtComplemento.getText());
-        endereco.setEstado(cbxEstados.getSelectedItem().toString());
-        endereco.setCidade(cbxCidade.getSelectedItem().toString());
-        endereco.setCep(new Util().apenasNumero(txtCep.getText()));
+        endereco = new Endereco(
+                this.idEndereco,
+                txtLogradouro.getText(),
+                txtNumero.getText(),
+                txtComplemento.getText(),
+                txtBairro.getText(),
+                cbxEstados.getSelectedItem().toString(),
+                cbxCidade.getSelectedItem().toString(),
+                new Util().apenasNumero(txtCep.getText())
+        );
 
-        student = new Student(idRow, this.txtNome.getText(), this.txtCpf.getText(),
-                new Util().formatDateToUs(this.txtDtaNascimento.getText()), 
-                this.cbxSexo.getSelectedItem().toString(), ckbStatus.isSelected(), 
-                this.txtNomeMae.getText(), this.txtNomePai.getText(), 
-                new Util().apenasNumero(this.txtTelefoneMae.getText()), 
-                new Util().apenasNumero(this.txtTelefonePai.getText()), 
-                this.txtNacionalidade.getText(), 
-                this.cbxUfNascimento.getSelectedItem().toString(), 
-                this.cbxCidadeNascimento.getSelectedItem().toString(), endereco);
+        student = new Student(
+                idRow,
+                this.txtNome.getText(),
+                new Util().apenasNumero(this.txtCpf.getText()),
+                new Util().formatDateToUs(this.txtDtaNascimento.getText()),
+                this.cbxSexo.getSelectedItem().toString(), ckbStatus.isSelected(),
+                this.txtNomeMae.getText(), this.txtNomePai.getText(),
+                new Util().apenasNumero(this.txtTelefoneMae.getText()),
+                new Util().apenasNumero(this.txtTelefonePai.getText()),
+                this.txtNacionalidade.getText(),
+                this.cbxUfNascimento.getSelectedItem().toString(),
+                this.cbxCidadeNascimento.getSelectedItem().toString(),
+                endereco);
 
         try {
-            studentController.salvaNoBD(student);
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.BOTTOM_LEFT, "Registro salvo  com sucesso.");
-            preencheTabela("");
-            cancelaAction();
+            int resultado = studentController.salvaNoBD(student);
+            if (resultado != 1) {
+                Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.BOTTOM_LEFT, "Erro ao salvar/atualizar o registro.");
+
+            } else {
+                Notifications.getInstance().show(Notifications.Type.SUCCESS, Notifications.Location.BOTTOM_LEFT, "Registro salvo  com sucesso.");
+                preencheTabela("");
+                cancelaAction();
+            }
         } catch (ExceptionDAO e) {
             LogGenerator.generateLog(e.getMessage());
             Notifications.getInstance().show(Notifications.Type.ERROR, Notifications.Location.BOTTOM_LEFT, e.getMessage());
@@ -906,7 +914,7 @@ public class EstudantesForm extends javax.swing.JInternalFrame {
                 this.txtTelefonePai.setText(estudante.getTelefonePai());
 
                 Endereco e = estudante.getEndereco();
-                this.idEndereco = e.getId();
+                this.idEndereco = e.getIdaddress();
                 txtLogradouro.setText(e.getLogradouro());
                 txtNumero.setText(e.getNumero());
                 txtBairro.setText(e.getBairro());
@@ -914,8 +922,7 @@ public class EstudantesForm extends javax.swing.JInternalFrame {
                 cbxEstados.getModel().setSelectedItem(e.getEstado());
                 cbxCidade.getModel().setSelectedItem(e.getCidade());
                 txtCep.setText(e.getCep());
-
-            } catch (Exception e) {
+            } catch (ExceptionDAO e) {
                 LogGenerator.generateLog(e.getMessage());
             }
         }
